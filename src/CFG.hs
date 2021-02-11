@@ -1,6 +1,7 @@
 module CFG where
 
 import Data.List
+import qualified Data.Map as Map 
 
 data Instruction =   Instr { op :: Op, args :: [Value]} | Label String 
     deriving Show
@@ -35,8 +36,23 @@ printBlocks blocks = putStrLn $ "\n" ++ prettyPrintBlocks blocks ++ "\n"
 
 type BasicBlock = [Instruction]
 
+type Edges = Map.Map String String
+
+getLabel :: BasicBlock -> String
+getLabel bb =
+    case head $ filter (\i -> isLabel i) bb of
+        Label s -> s  
+        _ -> "X"
+
+isLabel :: Instruction -> Bool 
+isLabel i = 
+    case i of 
+        Label _ -> True 
+        _ -> False
+
 getBlocks :: [Instruction] -> [BasicBlock]
 getBlocks is = reverse $ map reverse $ getBlocks_ is [] []
+
 
 getBlocks_ :: [Instruction] ->  BasicBlock -> [BasicBlock] -> [BasicBlock] 
 getBlocks_ [] currentBlock blocks  = currentBlock : blocks
@@ -56,7 +72,8 @@ isTerminator i =
         Instr op data_ -> op == Branch || op == Jump
         Label _ -> False
 
-prog1 = [  Instr {op = Add, args = [R 1, I 2, I 2]}
+prog1 = [  Label "begin"
+         , Instr {op = Add, args = [R 1, I 2, I 2]}
          , Instr {op = Sub, args = [R 2, R 1, I 1]}
          , Instr {op = Equal, args = [R 1, R 2]}
          , Instr {op = Branch, args = [Label_ "here", Label_ "there"]}

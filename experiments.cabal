@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d75f5fe8749a58a73135202aff504061983e023bdc45fb95159938214b93f55b
+-- hash: 73f59211d7b230f5c384a85651665b32974f2229474c13b9faa706699c33fdc2
 
 name:           experiments
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
   default-language: Haskell2010
 
 executable experiments-exe
@@ -46,6 +47,7 @@ executable experiments-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , experiments
   default-language: Haskell2010
 
@@ -59,5 +61,6 @@ test-suite experiments-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , experiments
   default-language: Haskell2010
