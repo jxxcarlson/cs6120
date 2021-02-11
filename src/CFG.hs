@@ -28,9 +28,12 @@ getLabel_ v =
 
 getLabel :: BasicBlock -> String
 getLabel bb =
-    case head $ filter (\i -> isLabel i) bb of
-        Label s -> s  
-        _ -> "X"
+    case filter (\i -> isLabel i) bb of
+        (i:is) -> 
+            case i of 
+                Label s -> s  
+                _ -> "X"
+        [] -> "nada"
 
 isLabel :: Instruction -> Bool 
 isLabel i = 
@@ -62,8 +65,10 @@ getCFG_ (i:is) currentBlock (blocks, edges) =
         inLabel = getLabel newBlock
 
     in
-        if isTerminator i then
+        if isTerminator i  then
             getCFG_ is [] (newBlock:blocks,  addEdges edges inLabel outLabels)
+        else if isLabel i then 
+            getCFG_ is [i] (currentBlock:blocks,  edges)
         else 
             getCFG_ is newBlock (blocks, edges)
 
@@ -75,6 +80,9 @@ addEdges :: Edges -> String -> [String] -> Edges
 addEdges es inStr outStrs =
     Prelude.foldr accumulator es outStrs
       where accumulator out m = (inStr, out):m
+      
+-- addEdges :: Edges -> String -> [String] -> Edges
+-- addEdges es inStr outStrs = es
       
 
 isTerminator :: Instruction -> Bool 
