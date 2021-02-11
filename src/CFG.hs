@@ -10,6 +10,82 @@ data Op = Add | Sub | Mul | Div | Equal | Print | Branch | Jump deriving (Show, 
 
 data Value = I Int | B Bool | S String | R Int | Label_ String deriving Show
 
+type BasicBlock = [Instruction]
+
+type Edges = [(String, String)]
+           
+
+type CFG = ([BasicBlock], Edges)
+
+emptyBlocks :: [BasicBlock]
+emptyBlocks = []
+
+getLabel_ :: Value -> String
+getLabel_ v = 
+    case v of 
+        Label_ s -> s  
+        _ -> ""
+
+getLabel :: BasicBlock -> String
+getLabel bb =
+    case head $ filter (\i -> isLabel i) bb of
+        Label s -> s  
+        _ -> "X"
+
+isLabel :: Instruction -> Bool 
+isLabel i = 
+    case i of 
+        Label _ -> True 
+        _ -> False
+
+getCFG :: [Instruction] -> ([BasicBlock], Edges)
+getCFG is = fixup $ getCFG_ is [] (emptyBlocks, [])
+
+fixup :: CFG -> CFG
+fixup (blocks, edges) = 
+    (reverse $ map reverse blocks, reverse edges)
+
+getOutLabels :: Instruction -> [String]
+getOutLabels i' = case op i' of
+    Jump -> map getLabel_ $ args i'
+    Branch -> map getLabel_ $ args i'
+    _ -> []
+
+getCFG_ :: [Instruction] ->  BasicBlock -> CFG -> CFG
+getCFG_ [] currentBlock (blocks, edges)= (currentBlock : blocks, edges)
+getCFG_ (i:is) currentBlock (blocks, edges) =
+    let
+        newBlock = i:currentBlock
+
+        outLabels = getOutLabels i
+
+        inLabel = getLabel newBlock
+
+    in
+        if isTerminator i then
+            getCFG_ is [] (newBlock:blocks,  addEdges edges inLabel outLabels)
+        else 
+            getCFG_ is newBlock (blocks, edges)
+
+
+accumulator_ :: String -> String -> Map.Map String String -> Map.Map String String  
+accumulator_ val key = Map.insert key val     
+
+addEdges :: Edges -> String -> [String] -> Edges
+addEdges es inStr outStrs =
+    Prelude.foldr accumulator es outStrs
+      where accumulator out m = (inStr, out):m
+      
+
+isTerminator :: Instruction -> Bool 
+isTerminator i =
+    case i of
+        Instr op data_ -> op == Branch || op == Jump
+        Label _ -> False
+
+
+-- PRINTING
+
 prettyPrintArgs :: [Value] -> String 
 prettyPrintArgs vs = intercalate ", " $ map show vs
 
@@ -31,47 +107,31 @@ printProg is = putStrLn $ "\n" ++ prettyPrintProg is ++ "\n"
 
 
 printBlocks :: [BasicBlock] -> IO ()
-printBlocks blocks = putStrLn $ "\n" ++ prettyPrintBlocks blocks ++ "\n"
+printBlocks blocks = putStrLn $ "\nBlocks\n======\n" ++ prettyPrintBlocks blocks ++ "\n"
 
 
-type BasicBlock = [Instruction]
+showPair :: (String, String) -> String
+showPair (a,b) = "(" ++ a ++ ", " ++ b ++ ")"
 
-type Edges = Map.Map String String
+showPairs :: [(String, String)] -> String
+showPairs ps = intercalate "\n" (map showPair ps)
 
-getLabel :: BasicBlock -> String
-getLabel bb =
-    case head $ filter (\i -> isLabel i) bb of
-        Label s -> s  
-        _ -> "X"
+printEdges :: Edges -> IO ()
+printEdges es = 
+    let 
 
-isLabel :: Instruction -> Bool 
-isLabel i = 
-    case i of 
-        Label _ -> True 
-        _ -> False
-
-getBlocks :: [Instruction] -> [BasicBlock]
-getBlocks is = reverse $ map reverse $ getBlocks_ is [] []
-
-
-getBlocks_ :: [Instruction] ->  BasicBlock -> [BasicBlock] -> [BasicBlock] 
-getBlocks_ [] currentBlock blocks  = currentBlock : blocks
-getBlocks_ (i:is) currentBlock blocks =
-    let
-        newBlock = i:currentBlock
+        edgeListAsString :: String
+        edgeListAsString = showPairs es
     in
-        if isTerminator i then
-            getBlocks_ is [] (newBlock:blocks)
-        else 
-            getBlocks_ is newBlock blocks
+    putStrLn $ "Edges\n=====\n" ++ edgeListAsString ++ "\n"
+  
+printCFG :: CFG -> IO ()
+printCFG (blocks, edges) = 
+    do
+        printBlocks blocks
+        printEdges edges
 
-
-isTerminator :: Instruction -> Bool 
-isTerminator i =
-    case i of
-        Instr op data_ -> op == Branch || op == Jump
-        Label _ -> False
-
+-- EXAMPLES
 prog1 = [  Label "begin"
          , Instr {op = Add, args = [R 1, I 2, I 2]}
          , Instr {op = Sub, args = [R 2, R 1, I 1]}
