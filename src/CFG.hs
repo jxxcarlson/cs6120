@@ -6,7 +6,9 @@ import qualified Data.Map as Map
 data Instruction =   Instr { op :: Op, args :: [Value]} | Label String 
     deriving Show
 
-data Op = Add | Sub | Mul | Div | Equal | Print | Branch | Jump deriving (Show, Eq)
+data Op = NoOp | Add | Sub | Mul | Div | Equal | Print | Branch | Jump deriving (Show, Eq)
+
+noOp = Instr { op = NoOp, args = []}
 
 data Value = I Int | B Bool | S String | R Int | Label_ String deriving Show
 
@@ -42,7 +44,7 @@ getEdges is =
     let 
         (bb, ltb) = getBlocksAndMap p1
     in
-        formEdges (drop 1 bb) ltb
+        formEdges (drop 1 bb) ltb |> reverse
 
 printEdges :: Edges -> IO ()
 printEdges edges = 
@@ -158,15 +160,13 @@ formEdges_ (b1:b2:bs) ltb edges =
        keys :: [String]
        keys = args (lastInstr b1) |> map getLabel_
 
-       ee = map (\k -> Map.lookup k ltb) keys 
-       
-       ee'' = ee |> 
-          fmap (\n -> (Just b1,n))
-
-       mNewEdges = sequence $ map merge ee''
+       mNewEdges = map (\k -> Map.lookup k ltb) keys 
+         |> fmap (\n -> (Just b1,n))
+         |> map merge
+         |> sequence 
    in
    case mNewEdges of 
-       Nothing -> formEdges_ (b2:bs) ltb (edges)
+       Nothing -> formEdges_ (b2:bs) ltb ((b1, b2):edges)
        Just newEdges -> formEdges_ (b2:bs) ltb (newEdges ++ edges)
 formEdges_ (b1:bs) ltb edges = edges
 
@@ -179,6 +179,8 @@ merge (u, v) =
 
 firstInstr :: BasicBlock -> Instruction
 firstInstr (i:is) = i  
+firstInstr ([i]) = i
+firstInstr _ = noOp
 
 lastInstr :: BasicBlock -> Instruction
 lastInstr = firstInstr . reverse
@@ -292,6 +294,7 @@ p1 = [  Label "begin"
          , Instr {op = Mul, args = [R 3, R 1, R 2]}
          , Label "here"
          , Instr {op = Print, args = [S "A"]}
+        --  , Instr {op = Jump, args = [Label_ "here"]}
          , Label "there"
          , Instr { op = Print, args = [S "B"]}
         ]
