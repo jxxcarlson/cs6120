@@ -158,14 +158,11 @@ formEdges_ (b1:b2:bs) ltb edges =
        keys :: [String]
        keys = args (lastInstr b1) |> map getLabel_
 
-       ee :: [Maybe BasicBlock]
        ee = map (\k -> Map.lookup k ltb) keys 
        
-       ee'' ::  [(Maybe BasicBlock, Maybe BasicBlock)]
        ee'' = ee |> 
           fmap (\n -> (Just b1,n))
 
-       mNewEdges :: Maybe [(BasicBlock, BasicBlock)]
        mNewEdges = sequence $ map merge ee''
    in
    case mNewEdges of 
