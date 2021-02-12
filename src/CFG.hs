@@ -44,7 +44,7 @@ getEdges is =
     let 
         (bb, ltb) = getBlocksAndMap p1
     in
-        formEdges (drop 1 bb) ltb |> reverse
+        formEdges bb ltb |> reverse
 
 printEdges :: Edges -> IO ()
 printEdges edges = 
@@ -61,68 +61,7 @@ printMap ltb =
     putStrLn $ prettyPrintLTB ltb 
 
 
--- MORE ...
-
-
-emptyBlocks :: [BasicBlock]
-emptyBlocks = []
-
-getLabel_ :: Value -> String
-getLabel_ v = 
-    case v of 
-        Label_ s -> s  
-        _ -> ""
-
-getLabel :: Instruction -> String
-getLabel i = 
-    case i of 
-        Label s -> s  
-        _ -> ""
-
-getLabelsFromBlock :: BasicBlock ->  [String] 
-getLabelsFromBlock bb = 
-    case reverse bb of
-        [] -> []
-        (i:is)->
-            case op i of 
-                Jump -> map stringOfLabel_ (args i)   
-                Branch -> map stringOfLabel_ (args i)   
-                _ -> []
-
-stringOfLabel_ :: Value  -> String
-stringOfLabel_ v =
-     case  v of 
-          (Label_ s)  -> s
-          _ -> ""
-  
-getLabelFromBlock :: BasicBlock -> Maybe String
-getLabelFromBlock bb =
-    case filter (\i -> isLabel i) bb of
-        (i:is) -> 
-            case i of 
-                Label s -> Just s  
-                _ -> Nothing
-        [] -> Nothing
-
-isLabel :: Instruction -> Bool 
-isLabel i = 
-    case i of 
-        Label _ -> True 
-        _ -> False
-
-
-
-
-
-reorder :: ([BasicBlock], LabelToBlock) -> ([BasicBlock], LabelToBlock)
-reorder (blocks, ltb) = 
-    (reverse $ map reverse blocks, ltb)
-
-getOutLabels :: Instruction -> [String]
-getOutLabels i' = case op i' of
-    Jump -> map getLabel_ $ args i'
-    Branch -> map getLabel_ $ args i'
-    _ -> []
+-- THE REAL WORK!
 
 
 getBlocksAndMap :: [Instruction] -> ([BasicBlock], LabelToBlock)
@@ -171,6 +110,8 @@ formEdges_ (b1:b2:bs) ltb edges =
 formEdges_ (b1:bs) ltb edges = edges
 
 
+-- HELPERS
+
 merge :: (Maybe a, Maybe b) -> Maybe (a, b)
 merge (u, v) = 
     case (u, v) of 
@@ -185,14 +126,65 @@ firstInstr _ = noOp
 lastInstr :: BasicBlock -> Instruction
 lastInstr = firstInstr . reverse
     
+emptyBlocks :: [BasicBlock]
+emptyBlocks = []
+
+getLabel_ :: Value -> String
+getLabel_ v = 
+    case v of 
+        Label_ s -> s  
+        _ -> ""
+
+getLabel :: Instruction -> String
+getLabel i = 
+    case i of 
+        Label s -> s  
+        _ -> ""
+
+getLabelsFromBlock :: BasicBlock ->  [String] 
+getLabelsFromBlock bb = 
+    case reverse bb of
+        [] -> []
+        (i:is)->
+            case op i of 
+                Jump -> map stringOfLabel_ (args i)   
+                Branch -> map stringOfLabel_ (args i)   
+                _ -> []
+
+stringOfLabel_ :: Value  -> String
+stringOfLabel_ v =
+     case  v of 
+          (Label_ s)  -> s
+          _ -> ""
+  
+getLabelFromBlock :: BasicBlock -> Maybe String
+getLabelFromBlock bb =
+    case filter (\i -> isLabel i) bb of
+        (i:is) -> 
+            case i of 
+                Label s -> Just s  
+                _ -> Nothing
+        [] -> Nothing
+
+isLabel :: Instruction -> Bool 
+isLabel i = 
+    case i of 
+        Label _ -> True 
+        _ -> False
+
+
+reorder :: ([BasicBlock], LabelToBlock) -> ([BasicBlock], LabelToBlock)
+reorder (blocks, ltb) = 
+    (reverse $ map reverse blocks, ltb)
+
+getOutLabels :: Instruction -> [String]
+getOutLabels i' = case op i' of
+    Jump -> map getLabel_ $ args i'
+    Branch -> map getLabel_ $ args i'
+    _ -> []
 
 
               
-
-      
--- addEdges :: Edges -> String -> [String] -> Edges
--- addEdges es inStr outStrs = es
-      
 
 isTerminator :: Instruction -> Bool 
 isTerminator i =
@@ -201,21 +193,8 @@ isTerminator i =
         Label _ -> False
 
 
+
 -- PRINTING
-
-
--- IO()-VALUED
-
-
-
-
-printCFG :: CFG -> IO ()
-printCFG (blocks, edges) = 
-    do
-        printBlocks blocks
-        printEdges edges
-
--- STRING-VALUED
 
 prettyPrintArgs :: [Value] -> String 
 prettyPrintArgs vs = intercalate ", " $ map show vs
@@ -294,7 +273,7 @@ p1 = [  Label "begin"
          , Instr {op = Mul, args = [R 3, R 1, R 2]}
          , Label "here"
          , Instr {op = Print, args = [S "A"]}
-        --  , Instr {op = Jump, args = [Label_ "here"]}
+         , Instr {op = Jump, args = [Label_ "here"]}
          , Label "there"
          , Instr { op = Print, args = [S "B"]}
         ]
